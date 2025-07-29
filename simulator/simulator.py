@@ -2,6 +2,7 @@ from enum import Enum
 
 
 import argparse
+import datetime
 import json
 import logging
 import pickle
@@ -39,6 +40,11 @@ class Simulation:
     def __init__(config, port=6969, logfile=None):
         self.status = SimulationStatus.INITIALIZING
 
+        # Initialize Time
+        self.max_steps = config['max steps']
+        self.delta_t = datetime.datetime.strptime(config['delta t'], '%m/%d/%Y %I:%M:%S %p')
+        self.t = datetime.datetime.strptime(config['start t'], '%m/%d/%Y %I:%M:%S %p')
+
         # Load Map
         if config['city']['name'] == 'New York' and config['city']['granularity'] == 'district':
             with open('../data/nyc-district-map.pkl', 'rb') as pklfile:
@@ -46,6 +52,10 @@ class Simulation:
 
         # Load Demand
         self.demand = ReplayDemand(f'../data/{config["demand"]}')
+        self.arrived = self.demand.get_demand(self.t, self.t + self.delta_t)
+        self.inprogress = {}
+        self.rejected = {}
+        self.completed = {}
 
         # Initialize Fleet
         self.fleet = []
@@ -56,17 +66,20 @@ class Simulation:
                 location=random.choice(list(self.map.keys()))
             )
 
-
         # Initialize Charging Network
         self.charging_network = []
         for station in config['charging stations']:
-            self.charging_network.append(ChargingStation(
+            self.charging_network.append(DCFastCharger(
+                location = station['location'],
+                ports = station['ports'],
+                queue_size = station['queue size'],
+                max_port_power = station['max_port_power'],
+                max_station_power = station['max_station_power'],
+                efficiency = station['efficiency']
             ))
 
         # Initialize Network
         self.port = port
-        self.t = 0
-        self.max_steps = config['max steps']
 
         LOGGER.INFO('Simulator initialized...')
 
@@ -81,6 +94,57 @@ class Simulation:
             request = json.loads(socket.recv())
             LOGGER.debug('received request.')
             self.status = SimulationStatus.CALCULATING
+
+            violation_list = []
+
+            # Move Fleet
+            for veh_idx, action in enumerate(request['actions']):
+                if action['command'] == 'service':
+                    if action['jobid'] not in self.arrived:
+                        violation_list.append(f'{action["jobid"]} not in pending job list')
+                    try:
+                        self.arrived[action['jobid']].assign_vehicle(self.vehicle_list[veh_idx])
+                        self.inprogress[action['jobid']] = self.arrived[action['jobid']]
+                        del self.arrived[action['jobid']]
+                    except Exception as e:
+                        violation_list.append(e.message)
+                elif action['command'] == 'charge':
+                    try:
+                        self.charging_network[action['stationidx']].assign_vehicle(self.vehicle_list[veh_idx])
+                    except Exception as e:
+                        violation_list.append(e.message)
+                elif action['command'] == 'reposition':
+                    if self.vehicle_list[veh_idx].status != VehicleStatus.IDLE:
+                        violation_list.append(f'Vehicle {veh_idx} is not idle')
+                    else:
+                        self.vehicle_list[veh_idx].status = VehicleStatus.TOLOC
+                        self.vehicle_list[veh_idx].destination = action['destination']
+
+            # Update charging vehicles
+            for charger in self.charging_network:
+                charger.tick()
+
+            # Update vehicles on jobs
+            for key, job in self.inprogress.item():
+                job.tick()
+                if job.status = JobStatus.COMPLETE:
+                    self.completed[key] = job
+                    del self.inprogress[key]
+                elif job.status = JobStatus.REJECTED:
+                    self.rejected[key] = job
+                    del self.inprgress[key]
+
+            # Update moving vehicles
+            for vehicle in self.vehicle_list:
+                if vehicle.status = VehicleStatus.TOLOC:
+                    vehicle.tick()
+
+            # Get new arrivals Job status
+            #TODO: self.pending.extend(self.get_demand(self.t, self.t + self.delta_t))
+
+            # Update time
+            self.t = self.t + self.delta_t
+
             # TODO: Calculate response
             socket.send(response)
             LOGGER.debug('response sent.')

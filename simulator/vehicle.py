@@ -19,12 +19,11 @@ class Vehicle:
             self.capacity = 71.7
             self.efficiency = 17.1
 
-        if self.battery.lower() == 'johnen':
-            self.battery_model = None
-            
+        if self.battery.lower() == 'brevo':
+            self.battery_model = BrevoModel(self.capacity, 1): 
 
         self.location = location
-        self.soc = 1
+        self.destination = None
         self.status = VehicleStatus.IDLE
 
     def go_to(location):

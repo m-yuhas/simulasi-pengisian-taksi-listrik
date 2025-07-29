@@ -8,12 +8,15 @@ class ReplayDemand:
         self.csvfile = open(path, 'r')
         self.reader = csv.DictReader(csvfile)
         self.last = self.reader.__next__()
+        self.global_idx = 0
 
     def get_demand(start, end):
+        demand = {}
         last_start = datetime.datetime.strptime(self.last['tpep_pickup_datetime'], '%m/%d/%Y %I:%M:%S %p')
         while last_start >= start and last_start < end:
             try:
-                yield NYCJob(self.last)
+                demand[self.global_idx] = NYCJob(self.last)
+                self.global_idx += 1
             except Exception:
                 continue
             self.last = self.reader.__next__()

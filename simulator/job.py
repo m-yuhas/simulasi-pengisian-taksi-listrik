@@ -1,5 +1,7 @@
 from enum import Enum
 
+from vehicle import *
+
 class JobStatus(Enum):
     ARRIVED = 1     # Job created
     ASSIGNED = 2    # Job assigned to vehicle
@@ -31,3 +33,16 @@ class NYCJob:
         if self.distance <= 0 or self.service_time <= 0:
             raise Exception
 
+    def assign_vehicle(self, vehicle):
+        if vehicle.status != VehicleStatus.IDLE:
+            raise Exception('Only idle vehicle can be assigned to a job')
+        self.vehicle = vehicle
+        if self.vehicle.location == self.start_loc:
+            self.vehicle.staus = VehicleStatus.ONJOB
+            self.vehicle.destination = self.end_loc
+        else:
+            self.vehicle.status = VehicleStatus.TOPICKUP
+            self.vehicle.destination = self.start_loc
+
+    def step(self, delta_t):
+        pass
