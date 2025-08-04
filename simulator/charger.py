@@ -24,7 +24,7 @@ class ChargingPort:
 class DCFastCharger:
     
     def __init__(self, location, ports, queue_size, max_port_power, max_station_power, efficiency):
-        self.ports = [port for ChargingPort() in range(self.port)]
+        self.ports = [ChargingPort() for port in range(self.port)]
         self.vehicle_queue = set()
         self.vehicles_en_route = set()
         self.max_queue_size = queue_size
@@ -33,29 +33,32 @@ class DCFastCharger:
         self.efficiency = efficiency
         self.location = location
 
-    def assign_vehicle(self, vehicle):
-        if vehicle.status != VehicleStatus.IDLE:
-            raise Exception('Only idling vehicle can be assigned to a charger')
-        if vehicle.location == self.location:
-            self.vehicle_queue.append(vehicle)
-        else:
-            vehicle.destination = self.location
-            self.vehicles_en_route.append(vehicle)
 
-    def tick(self):
-        for vehicle in self.vehicles_en_route:
-            vehicle.tick()
-            if vehicle.location == self.location:
-                self.vehicle_queue.add(vehicle)
-                self.vehicles_en_route.remove(vehicle)
+    def assign_vehicle(self, vehicle, charging_rate, end_capacity):
+        if vehicle.location != self.location:
+            raise Exception('Vehicle needs to be at charging location')
+        assigned = False
+        for port in self.ports:
+            if not port.vehicle:
+                port.vehicle = vehicle
+                port.vehicle.next_charge_rate = charging_rate
+                port.vehicle.end_capacity = end_capacity
+                port.vehicle.status = VehicleStatus.CHARGING
+                assigned = True
+            elif port.vehicle == vehicle:
+                port.vehicle.next_charge_rate = charging_rate
+                port.vehicle.end_capacity = end_capacity
+                assigned = True
+        if not assigned:
+            raise Exception('All chargers are full')
+
+    def tick(self, delta_t, ambient_t):
         for port in self.ports:
             if port.vehicle:
-                port.vehicle.battery.charge("TODO:")
-                if stop condition:
-                    port.vehicle.state = VehicleState.IDLE
+                port.vehicle.battery.charge(vehicle.next_charge_rate * delta_t / 3600, delta_t, ambient_t)
+                if port.vehicle.battery.soc >= port.vehicle.end_capacity:
+                    port.vehicle.status = VehicleStatus.IDLE
                     port.vehicle = None
-            else:
-                if len(self.vehicle_queue) > 1:
-                    port.vehicle = #TODO
-        if len(self.vehicle_queue) > self.max_queue_size:
-            raise Exception('Too many vehicles in station queue')
+        # TODO: add concept of charging queue
+        #if len(self.vehicle_queue) > self.max_queue_size:
+        #    raise Exception('Too many vehicles in station queue')

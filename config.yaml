@@ -1,5 +1,6 @@
 max steps: 100
-delta t: 1      # Minute
+delta t: 30      # Minute
+start t: 01/01/2020 01:00:00 AM
 
 city:
   name: New York

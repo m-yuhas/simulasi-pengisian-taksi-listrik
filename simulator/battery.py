@@ -55,4 +55,11 @@ class BrevoModel:
         sigma_fcn = (self.alpha * self.soc - self.beta) * numpy.exp((-self.E_a + self.eta * I_c)/(self.R_g*(273.15 + ambient_t)))
         tau_alpha = 1 - sigma_fcn * Q_acc ** self.z
         self.actual_capacity = tau_alpha * self.actual_capacity
-        
+
+
+    def charge(self, W, t, T):
+        self.recalculate_capacity(W, t, T)
+
+    def discharge(self, W, t, T):
+        self.recalculate_capacity(-W, t, T)
+
