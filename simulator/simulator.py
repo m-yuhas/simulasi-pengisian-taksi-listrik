@@ -44,6 +44,7 @@ class Simulation:
         self.max_steps = config['max steps']
         self.delta_t = datetime.timedelta(seconds=config['delta t'])
         self.t = datetime.datetime.strptime(config['start t'], '%m/%d/%Y %I:%M:%S %p')
+        self.end_t = datetime.datetime.strptime(config['end t'], '%m/%d/%Y %I:%M:%S %p')
         self.ambient_t = 25 #TODO Weather model
 
         # Load Map
@@ -74,21 +75,21 @@ class Simulation:
                 location = station['location'],
                 ports = station['ports'],
                 queue_size = station['queue size'],
-                max_port_power = station['max_port_power'],
-                max_station_power = station['max_station_power'],
+                max_port_power = station['max port power'],
+                max_station_power = station['max station power'],
                 efficiency = station['efficiency']
             ))
 
         # Initialize Network
         self.port = port
 
-        LOGGER.INFO('Simulator initialized...')
+        LOGGER.info('Simulator initialized...')
 
     def start(self):
         context = zmq.Context()
-        socket = self.context.socket(zmq.REP)
+        socket = context.socket(zmq.REP)
         socket.bind("tcp://*:%s" % self.port)
-        LOGGER.INFO('Simulator serving world state on tcp://*:%s' % self.port)
+        LOGGER.info('Simulator serving world state on tcp://*:%s' % self.port)
         while self.status != SimulationStatus.STOPPED:
             self.status = SimulationStatus.WAITING
             LOGGER.debug('waiting...')
@@ -104,33 +105,33 @@ class Simulation:
                     if action['jobid'] not in self.arrived:
                         violation_list.append(f'{action["jobid"]} not in pending job list')
                     try:
-                        ttp, dtp = self.get_td_to_dest(self.vehicle_list[veh_idx].location, self.arrived[action['jobid']].start_pos)
-                        self.arrived[action['jobid']].assign_vehicle(self.vehicle_list[veh_idx], ttp, dtp)
+                        ttp, dtp = self.get_td_to_dest(self.fleet[veh_idx].location, self.arrived[action['jobid']].start_pos)
+                        self.arrived[action['jobid']].assign_vehicle(self.fleet[veh_idx], ttp, dtp)
                         self.inprogress[action['jobid']] = self.arrived[action['jobid']]
                         del self.arrived[action['jobid']]
                     except Exception as e:
                         violation_list.append(e.message)
                 elif action['command'] == 'charge':
                     try:
-                        self.charging_network[action['stationidx']].assign_vehicle(self.vehicle_list[veh_idx], action['rate'], action['stop condition'])
+                        self.charging_network[action['stationidx']].assign_vehicle(self.fleet[veh_idx], action['rate'], action['stop condition'])
                     except Exception as e:
                         violation_list.append(e.message)
                 elif action['command'] == 'reposition':
-                    if self.vehicle_list[veh_idx].status != VehicleStatus.IDLE:
+                    if self.fleet[veh_idx].status != VehicleStatus.IDLE:
                         violation_list.append(f'Vehicle {veh_idx} is not idle')
                     else:
-                        self.vehicle_list[veh_idx].status = VehicleStatus.TOLOC
-                        self.vehicle_list[veh_idx].destination = action['destination']
-                        ttp, dtp = self.get_td_to_dest(self.vehicle_list[veh_idx].location, action['destination'])
-                        self.vehicle_list[veh_idx].distance_remaining = dtp
-                        self.vehicle_list[veh_idx].time_remaining = ttp
+                        self.fleet[veh_idx].status = VehicleStatus.TOLOC
+                        self.fleet[veh_idx].destination = action['destination']
+                        ttp, dtp = self.get_td_to_dest(self.fleet[veh_idx].location, action['destination'])
+                        self.fleet[veh_idx].distance_remaining = dtp
+                        self.fleet[veh_idx].time_remaining = ttp
 
             # Update charging vehicles
             for charger in self.charging_network:
                 charger.tick(self.delta_t, self.ambient_t)
 
             # Update vehicles on jobs
-            for key, job in self.inprogress.item():
+            for key, job in self.inprogress.items():
                 job.tick(self.delta_t, self.ambient_t)
                 if job.status == JobStatus.COMPLETE:
                     self.completed[key] = job
@@ -140,28 +141,32 @@ class Simulation:
                     del self.inprgress[key]
 
             # Update moving vehicles
-            for vehicle in self.vehicle_list:
+            for vehicle in self.fleet:
                 if vehicle.status == VehicleStatus.TOLOC:
                     vehicle.tick(self.delta_t, self.ambient_t)
 
             # Get new arrivals Job status
-            self.pending = self.pending | self.get_demand(self.t, self.t + self.delta_t)
-
+            self.arrived = self.arrived | self.demand.get_demand(self.t, self.t + self.delta_t)
+            LOGGER.warning(self.t)
             # Update time
             self.t = self.t + self.delta_t
 
             # Calculate response
             response = {}
-            response['pending'] = self.pending
-            response['completed'] = self.completed
-            response['rejected'] = self.rejected
-            response['charging_network'] = self.charging_network
-            response['fleet'] = self.vehicle_list
-            socket.send(response)
+            response['arrived'] = [self.arrived[j].to_dict() for j in self.arrived]
+            response['completed'] = [self.completed[j].to_dict() for j in self.completed]
+            response['rejected'] = [self.rejected[j].to_dict() for j in self.rejected]
+            response['inprogress'] = [self.inprogress[j].to_dict() for j in self.inprogress]
+            response['charging_network'] = [s.to_dict() for s in self.charging_network]
+            response['fleet'] = [v.to_dict() for v in self.fleet]
+            response['violations'] = violation_list
+            socket.send_string(json.dumps(response))
             LOGGER.debug('response sent.')
-            self.t += 1
-            if self.t > self.max_steps:
+            
+            if self.t >= self.end_t:
                 self.status = SimulationStatus.STOPPED
+                LOGGER.warning('Simulation reached its end...')
+                break
 
     def get_td_to_dest(self, loc, dest):
         if self.map[loc][dest]['time'] is None:

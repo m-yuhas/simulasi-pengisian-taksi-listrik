@@ -1,3 +1,5 @@
+import datetime
+
 from enum import Enum
 
 from vehicle import *
@@ -33,6 +35,17 @@ class NYCJob:
 
         if self.distance <= 0 or self.service_time <= 0:
             raise Exception
+
+    def to_dict(self):
+        return {
+            'start_loc': self.start_loc,
+            'end_loc': self.end_loc,
+            'start_time': str(self.start_time),
+            'service_time': self.service_time,
+            'distance': self.distance,
+            'vehicle': self.vehicle.to_dict() if self.vehicle else None,
+            'status': self.status.name
+        }
 
     def assign_vehicle(self, vehicle, ttp, dtp):
         if vehicle.status != VehicleStatus.IDLE:

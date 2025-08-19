@@ -19,14 +19,25 @@ class Vehicle:
             self.capacity = 71.7
             self.efficiency = 17.1 # kWh/100km
 
-        if self.battery.lower() == 'brevo':
-            self.battery_model = BrevoModel(self.capacity, 1) 
+        if battery.lower() == 'brevo':
+            self.battery = BrevoModel(self.capacity, 1) 
+        if battery.lower() == 'wan':
+            self.battery = WanModel(self.capacity, 1)
 
         self.location = location
         self.destination = None
         self.distance_remaining = 0
         self.time_remaining = 0
         self.status = VehicleStatus.IDLE
+
+    def to_dict(self):
+        return {
+            'location': self.location,
+            'destination': self.destination,
+            'distance_remaining': self.distance_remaining,
+            'time_remaining': self.time_remaining,
+            'status': self.status.name
+        }
 
     def tick(delta_t, ambient_t):
         self.time_elapsed = self.time_remaining
