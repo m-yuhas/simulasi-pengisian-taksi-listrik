@@ -28,6 +28,7 @@ class Vehicle:
         self.destination = None
         self.distance_remaining = 0
         self.time_remaining = 0
+        self.time_elapsed = 0
         self.status = VehicleStatus.IDLE
 
     def to_dict(self):
@@ -36,16 +37,19 @@ class Vehicle:
             'destination': self.destination,
             'distance_remaining': self.distance_remaining,
             'time_remaining': self.time_remaining,
-            'status': self.status.name
+            'status': self.status.name,
+            'battery': self.battery.to_dict(),
+            'time_elapsed': self.time_elapsed
         }
 
-    def tick(delta_t, ambient_t):
-        self.time_elapsed = self.time_remaining
-        self.time_remaining = self.time_remaining - delta_t
+    def tick(self, delta_t, ambient_t):
+        self.time_elapsed += min(self.time_remaining, delta_t.total_seconds())
+        self.time_remaining -= delta_t.total_seconds()
         if self.time_remaining <= 0:
             self.status = VehicleStatus.IDLE
-            W = self.efficiency * self.distance_remaining / 100
+            W = self.distance_remaining * self.efficiency / 100
             self.battery.discharge(W, self.time_elapsed, ambient_t)
-
-
-
+            self.distance_remaining = 0
+            self.time_elapsed = 0
+            self.time_remaining = 0
+            self.location = self.destination

@@ -24,7 +24,7 @@ class Job:
 
 class NYCJob:
 
-    def __init__(self, row_dict):
+    def __init__(self, row_dict, idx=0):
         self.start_loc = int(row_dict['PULocationID'])
         self.end_loc = int(row_dict['DOLocationID'])
         self.start_time = datetime.datetime.strptime(row_dict['tpep_pickup_datetime'], '%m/%d/%Y %I:%M:%S %p')
@@ -32,8 +32,10 @@ class NYCJob:
         self.distance = float(row_dict['trip_distance'])
         self.vehicle = None
         self.status = JobStatus.ARRIVED
+        self.idx = idx
+        self.elapsed_time = 0
 
-        if self.distance <= 0 or self.service_time <= 0:
+        if self.distance <= 0 or self.service_time <= 0 or self.end_loc == 0 or self.start_loc == 0:
             raise Exception
 
     def to_dict(self):
@@ -44,7 +46,8 @@ class NYCJob:
             'service_time': self.service_time,
             'distance': self.distance,
             'vehicle': self.vehicle.to_dict() if self.vehicle else None,
-            'status': self.status.name
+            'status': self.status.name,
+            'idx': self.idx
         }
 
     def assign_vehicle(self, vehicle, ttp, dtp):
@@ -56,11 +59,11 @@ class NYCJob:
             self.vehicle.destination = self.end_loc
             self.vehicle.distance_remaining = self.distance
             self.vehicle.time_remaining = self.service_time
-            self.status = VehicleStatus.INPROGRESS
+            self.status = JobStatus.INPROGRESS
         else:
             self.vehicle.status = VehicleStatus.TOPICKUP
             self.vehicle.destination = self.start_loc
-            self.status = VehicleStatus.ASSIGNED
+            self.status = JobStatus.ASSIGNED
             self.vehicle.distance_remaining = dtp
             self.vehicle.time_remaining = ttp
 
@@ -87,4 +90,4 @@ class NYCJob:
             if self.elapsed_time >= 3600:
                 self.status = JobStatus.REJECTED #TODO: allow custom reject times
                 self.vehicle = None
-            self.elapsed_time += delta_t
+            self.elapsed_time += delta_t.total_seconds()

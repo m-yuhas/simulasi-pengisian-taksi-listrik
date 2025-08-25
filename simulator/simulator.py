@@ -49,7 +49,7 @@ class Simulation:
 
         # Load Map
         if config['city']['name'] == 'New York' and config['city']['granularity'] == 'district':
-            with open('../data/nyc-district-map.pkl', 'rb') as pklfile:
+            with open('../data/nyc-district-map2.pkl', 'rb') as pklfile:
                 self.map = pickle.loads(pklfile.read())
 
         # Load Demand
@@ -103,22 +103,24 @@ class Simulation:
             for veh_idx, action in enumerate(request['actions']):
                 if action['command'] == 'service':
                     if action['jobid'] not in self.arrived:
-                        violation_list.append(f'{action["jobid"]} not in pending job list')
-                    try:
-                        ttp, dtp = self.get_td_to_dest(self.fleet[veh_idx].location, self.arrived[action['jobid']].start_pos)
-                        self.arrived[action['jobid']].assign_vehicle(self.fleet[veh_idx], ttp, dtp)
-                        self.inprogress[action['jobid']] = self.arrived[action['jobid']]
-                        del self.arrived[action['jobid']]
-                    except Exception as e:
-                        violation_list.append(e.message)
+                        raise Exception(f'{action["jobid"]} not in pending job list')
+                    ttp, dtp = self.get_td_to_dest(self.fleet[veh_idx].location, self.arrived[action['jobid']].start_loc)
+                    self.arrived[action['jobid']].assign_vehicle(self.fleet[veh_idx], ttp, dtp)
+                    self.inprogress[action['jobid']] = self.arrived[action['jobid']]
+                    del self.arrived[action['jobid']]
                 elif action['command'] == 'charge':
-                    try:
+                    if self.fleet[veh_idx].location != self.charging_network[action['stationidx']].location:
+                        self.fleet[veh_idx].status = VehicleStatus.TOLOC
+                        self.fleet[veh_idx].destination = self.charging_network[action['stationidx']].location
+                        ttp, dtp = self.get_td_to_dest(self.fleet[veh_idx].location, self.charging_network[action['stationidx']].location)
+                        self.fleet[veh_idx].distance_remaining = dtp
+                        self.fleet[veh_idx].time_remaining = ttp
+                        self.charging_network[action['stationidx']].vehicles_en_route.append({'vehicle': vehicle, 'rate': action['rate'], 'condition': action['stop condition']})
+                    else:
                         self.charging_network[action['stationidx']].assign_vehicle(self.fleet[veh_idx], action['rate'], action['stop condition'])
-                    except Exception as e:
-                        violation_list.append(e.message)
                 elif action['command'] == 'reposition':
                     if self.fleet[veh_idx].status != VehicleStatus.IDLE:
-                        violation_list.append(f'Vehicle {veh_idx} is not idle')
+                        raise Exception(f'Vehicle {veh_idx} is not idle')
                     else:
                         self.fleet[veh_idx].status = VehicleStatus.TOLOC
                         self.fleet[veh_idx].destination = action['destination']
@@ -126,19 +128,24 @@ class Simulation:
                         self.fleet[veh_idx].distance_remaining = dtp
                         self.fleet[veh_idx].time_remaining = ttp
 
+            #LOGGER.critical(self.fleet[7].to_dict())
+
             # Update charging vehicles
             for charger in self.charging_network:
                 charger.tick(self.delta_t, self.ambient_t)
 
             # Update vehicles on jobs
+            del_keys = []
             for key, job in self.inprogress.items():
                 job.tick(self.delta_t, self.ambient_t)
                 if job.status == JobStatus.COMPLETE:
                     self.completed[key] = job
-                    del self.inprogress[key]
+                    del_keys.append(key)
                 elif job.status == JobStatus.REJECTED:
                     self.rejected[key] = job
-                    del self.inprgress[key]
+                    del_keys.append(key)
+            for key in del_keys:
+                del self.inprogress[key]
 
             # Update moving vehicles
             for vehicle in self.fleet:
@@ -147,6 +154,7 @@ class Simulation:
 
             # Get new arrivals Job status
             self.arrived = self.arrived | self.demand.get_demand(self.t, self.t + self.delta_t)
+            LOGGER.error(len(self.arrived))
             LOGGER.warning(self.t)
             # Update time
             self.t = self.t + self.delta_t
@@ -160,6 +168,7 @@ class Simulation:
             response['charging_network'] = [s.to_dict() for s in self.charging_network]
             response['fleet'] = [v.to_dict() for v in self.fleet]
             response['violations'] = violation_list
+            #print(response)
             socket.send_string(json.dumps(response))
             LOGGER.debug('response sent.')
             
@@ -171,7 +180,7 @@ class Simulation:
     def get_td_to_dest(self, loc, dest):
         if self.map[loc][dest]['time'] is None:
             return dijkstra(loc, dest)            
-        elif isintance(self.map[loc][dest]['time'], float):
+        elif isinstance(self.map[loc][dest]['time'], float):
             return self.map[loc][dest]['time'], self.map[loc][dest]['distance']
         else:
             t = self.map[loc][dest]['time'].resample(1)
@@ -187,7 +196,7 @@ class Simulation:
         prev = []
         Q = set()
         for v in self.map:
-            dist.append(flaot('inf'))
+            dist.append(float('inf'))
             prev.append(None)
             Q.add(v)
         dist[loc] = 0

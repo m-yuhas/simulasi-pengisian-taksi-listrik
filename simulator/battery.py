@@ -40,7 +40,7 @@ class BrevoModel:
         # ambient_T in C
         alpha = self.alpha[0] if self.soc < 0.45 else self.alpha[1]
         beta = self.beta[0] if self.soc < 0.45 else self.beta[1]
-        print(delta_W / self.actual_capacity + self.soc * self.actual_capacity)
+        #print(delta_W / self.actual_capacity + self.soc * self.actual_capacity)
         self.soc = min(max(delta_W / self.actual_capacity + self.soc * self.actual_capacity, 0.0), 1.0)
 
         s = numpy.array([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
@@ -96,12 +96,12 @@ class WanModel:
         # delta_W = kWh
         # delta_t = sec
         # ambient_t = C
-        if self.actual_capacity / self.initial_capacity > 93.3:
+        if self.actual_capacity / self.initial_capacity > 0.933:
             alpha = 0.2172
             beta = 24.2535
             psi = -12.0051
             zeta = 0.3952
-        elif self.actual_capacity / self.initial_capacity > 86.6:
+        elif self.actual_capacity / self.initial_capacity > 0.866:
             alpha = 0.2652
             beta = 9.9653
             psi = -29.0049
@@ -115,7 +115,7 @@ class WanModel:
         DoD_ref = 1.0
         DoD_t = (self.soc * self.actual_capacity + delta_W) / self.actual_capacity
         if DoD_t < 0 or DoD_t > 1:
-            raise Exception('Magnitude of delta W too large')
+            raise Exception(f'Magnitude of delta W too large: SoC - {self.soc}; Cap. - {self.actual_capacity}; W - {delta_W}')
         C = self.initial_capacity
         I_ref = 0.5 * C
         I_t = delta_W / (delta_t / 3600)

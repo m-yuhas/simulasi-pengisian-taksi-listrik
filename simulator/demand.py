@@ -19,11 +19,12 @@ class ReplayDemand:
             last_start = datetime.datetime.strptime(self.last['tpep_pickup_datetime'], '%m/%d/%Y %I:%M:%S %p')
         while last_start < end:
             try:
-                demand[self.global_idx] = NYCJob(self.last)
+                demand[self.global_idx] = NYCJob(self.last, self.global_idx)
                 self.global_idx += 1
             except Exception as e:
-                print(e)
+                pass
             self.last = self.reader.__next__()
+            print(self.last)
             last_start = datetime.datetime.strptime(self.last['tpep_pickup_datetime'], '%m/%d/%Y %I:%M:%S %p')
         return demand
 
