@@ -141,9 +141,9 @@ class Simulation:
                 if job.status == JobStatus.COMPLETE:
                     self.completed[key] = job
                     del_keys.append(key)
-                elif job.status == JobStatus.REJECTED:
-                    self.rejected[key] = job
-                    del_keys.append(key)
+                #elif job.status == JobStatus.REJECTED:
+                #    self.rejected[key] = job
+                #    del_keys.append(key)
             for key in del_keys:
                 del self.inprogress[key]
 
@@ -154,7 +154,21 @@ class Simulation:
 
             # Get new arrivals Job status
             self.arrived = self.arrived | self.demand.get_demand(self.t, self.t + self.delta_t)
-            LOGGER.error(len(self.arrived))
+            del_keys = []
+            for job in self.arrived:
+                self.arrived[job].tick(self.delta_t, self.ambient_t)
+                if self.arrived[job].status == JobStatus.COMPLETE:
+                    self.completed[job] = self.arrived[job]
+                    del_keys.append(job)
+                if self.arrived[job].status == JobStatus.REJECTED:
+                    self.rejected[job] = self.arrived[job]
+                    del_keys.append(job)
+            for key in del_keys:
+                del self.arrived[key]
+
+            #LOGGER.error(len(self.completed))
+            #LOGGER.critical(len(self.rejected))
+            #LOGGER.info(len(self.inprogress))
             LOGGER.warning(self.t)
             # Update time
             self.t = self.t + self.delta_t
@@ -162,8 +176,8 @@ class Simulation:
             # Calculate response
             response = {}
             response['arrived'] = [self.arrived[j].to_dict() for j in self.arrived]
-            response['completed'] = [self.completed[j].to_dict() for j in self.completed]
-            response['rejected'] = [self.rejected[j].to_dict() for j in self.rejected]
+            response['completed'] = len(self.completed)
+            response['rejected'] = len(self.rejected)
             response['inprogress'] = [self.inprogress[j].to_dict() for j in self.inprogress]
             response['charging_network'] = [s.to_dict() for s in self.charging_network]
             response['fleet'] = [v.to_dict() for v in self.fleet]

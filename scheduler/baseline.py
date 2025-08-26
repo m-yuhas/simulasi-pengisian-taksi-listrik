@@ -90,6 +90,11 @@ socket = context.socket(zmq.REQ)
 socket.connect("tcp://localhost:%s" % port)
 
 request = {'actions': []}
+
+logf = open('baseline_logs.csv', 'w')
+header = ",".join([ f"h{i}" for i in range(50) ]) + "," + ",".join([ f"s{i}" for i in range(50) ]) + "," + ",".join([ f"c{i}" for i in range(5)]) + ",served\n"
+logf.write(header)
+
 while True:
     LOGGER.debug('Sending Request')
 
@@ -97,8 +102,8 @@ while True:
     response = socket.recv()
     response = json.loads(response)
     #LOGGER.warning(response['violations'])
-    LOGGER.warning([v['battery']['soc'] for v in response['fleet']])
-    LOGGER.info([v['battery']['actual_capacity'] for v in response['fleet']])
+    #LOGGER.warning([v['battery']['soc'] for v in response['fleet']])
+    #LOGGER.info([v['battery']['actual_capacity'] for v in response['fleet']])
     request = {'actions': []}
     total_power = 0
     for vehicle in response['fleet']:
@@ -158,7 +163,9 @@ while True:
                 request['actions'][idx]['rate'] = new_charge
 
 
-    LOGGER.critical(request['actions'][7])
-    LOGGER.critical(response['fleet'][7])
-    #time.sleep(1)
+    #LOGGER.critical(response['inprogress'])
+    #LOGGER.warning([v['battery']['soc'] for v in response['fleet']])
+    #LOGGER.info([v['battery']['actual_capacity'] for v in response['fleet']])
 
+    data = ",".join([ str(v['battery']['actual_capacity']) for v in response['fleet']]) + "," + ",".join([ str(v['battery']['soc']) for v in response['fleet']]) + "," + ",".join(["1" if i['command'] == 'charge' else "0" for i in request['actions']]) + f",{response['completed']}\n"
+    logf.write(data)

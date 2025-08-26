@@ -25,6 +25,9 @@ class Job:
 class NYCJob:
 
     def __init__(self, row_dict, idx=0):
+        if row_dict['VendorID'] == '':
+            raise Exception
+
         self.start_loc = int(row_dict['PULocationID'])
         self.end_loc = int(row_dict['DOLocationID'])
         self.start_time = datetime.datetime.strptime(row_dict['tpep_pickup_datetime'], '%m/%d/%Y %I:%M:%S %p')
@@ -55,7 +58,7 @@ class NYCJob:
             raise Exception('Only idle vehicle can be assigned to a job')
         self.vehicle = vehicle
         if self.vehicle.location == self.start_loc:
-            self.vehicle.staus = VehicleStatus.ONJOB
+            self.vehicle.status = VehicleStatus.ONJOB
             self.vehicle.destination = self.end_loc
             self.vehicle.distance_remaining = self.distance
             self.vehicle.time_remaining = self.service_time
@@ -72,21 +75,35 @@ class NYCJob:
             if self.vehicle.status == VehicleStatus.TOPICKUP:
                 if self.vehicle.location != self.vehicle.destination:
                     self.vehicle.tick(delta_t, ambient_t)
+                    if self.vehicle.status == VehicleStatus.IDLE:
+                        self.vehicle.status = VehicleStatus.TOPICKUP
                 else:
                     self.vehicle.status = VehicleStatus.ONJOB
                     self.status = JobStatus.INPROGRESS
                     self.vehicle.destination = self.end_loc
                     self.vehicle.distance_remaining = self.distance
                     self.vehicle.time_remaining = self.service_time
+                    self.vehicle.tick(delta_t, ambient_t)
+                    if self.vehicle.status == VehicleStatus.IDLE:
+                        self.vehicle.status = VehicleStatus.ONJOB
+                        #self.status = JobStatus.COMPLETE
+                        #self.vehicle.destination = None
+                        #self.vehicle = None
             elif self.vehicle.status == VehicleStatus.ONJOB:
                 if self.vehicle.location != self.vehicle.destination:
                     self.vehicle.tick(delta_t, ambient_t)
+                    if self.vehicle.status == VehicleStatus.IDLE:
+                        self.status = JobStatus.COMPLETE
+                        self.vehicle.destination = None
+                        self.vehicle = None
                 else:
                     self.vehicle.status = VehicleStatus.IDLE
                     self.status = JobStatus.COMPLETE
                     self.vehicle.destination = None
                     self.vehicle = None
-        if self.status not in [JobStatus.COMPLETE, JobStatus.REJECTED, JobStatus.INPROGRESS]:
+            elif self.vehicle.status == VehicleStatus.IDLE:
+                raise Exception("Not supposed to be here")
+        if self.status not in [JobStatus.COMPLETE, JobStatus.REJECTED, JobStatus.INPROGRESS, JobStatus.ASSIGNED]:
             if self.elapsed_time >= 3600:
                 self.status = JobStatus.REJECTED #TODO: allow custom reject times
                 self.vehicle = None
