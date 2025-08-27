@@ -102,7 +102,9 @@ class NYCJob:
                     self.vehicle.destination = None
                     self.vehicle = None
             elif self.vehicle.status == VehicleStatus.IDLE:
-                raise Exception("Not supposed to be here")
+                self.status = JobStatus.COMPLETE
+                self.vehicle.destination = None
+                self.vehicle = None
         if self.status not in [JobStatus.COMPLETE, JobStatus.REJECTED, JobStatus.INPROGRESS, JobStatus.ASSIGNED]:
             if self.elapsed_time >= 3600:
                 self.status = JobStatus.REJECTED #TODO: allow custom reject times

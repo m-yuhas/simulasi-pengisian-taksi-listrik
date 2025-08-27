@@ -82,6 +82,8 @@ def get_distance(veh_loc, job_loc):
 #random.seed(0)
 #numpy.random.seed(0)
 
+EPSILON = 0.1
+
 port = 6969
 
 context = zmq.Context()
@@ -112,7 +114,7 @@ while True:
         # 1. If a vehicle's SoC < 0.2, send to nearest charger and at maximum rate
         if vehicle['battery']['soc'] < 0.2 and vehicle['status'] == 'IDLE':
             destination = get_closest_charger(vehicle['location'], response['charging_network'])
-            charge_power = (1 - vehicle['battery']['soc']) * vehicle['battery']['actual_capacity']
+            charge_power = max(1 - vehicle['battery']['soc'] - EPSILON, 0) * vehicle['battery']['actual_capacity']
             request['actions'].append({
                 'command': 'charge',
                 'stationidx': destination,
@@ -121,7 +123,7 @@ while True:
             })
             total_power += charge_power
         elif vehicle['status'] == 'CHARGING' and (1 - vehicle['battery']['soc']) * vehicle['battery']['actual_capacity'] < 60:
-            charge_power = (1 - vehicle['battery']['soc']) * vehicle['battery']['actual_capacity']
+            charge_power = max(1 - vehicle['battery']['soc'] - EPSILON, 0) * vehicle['battery']['actual_capacity']
             request['actions'].append({
                 'command': 'charge',
                 'stationidx': destination,

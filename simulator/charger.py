@@ -85,7 +85,7 @@ class DCFastCharger:
             if v['vehicle'].location == self.location:
                 self.assign_vehicle(v['vehicle'], v['rate'], v['condition'])
                 to_remove.append(idx)
-        for idx in to_remove:
+        for idx in sorted(to_remove, reverse=True):
             del self.vehicles_en_route[idx]
         for v in self.vehicle_queue:
             self.assign_vehicle(v['vehicle'], v['rate'], v['condition'])

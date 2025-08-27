@@ -114,8 +114,14 @@ class WanModel:
 
         DoD_ref = 1.0
         DoD_t = (self.soc * self.actual_capacity + delta_W) / self.actual_capacity
-        if DoD_t < 0 or DoD_t > 1:
-            raise Exception(f'Magnitude of delta W too large: SoC - {self.soc}; Cap. - {self.actual_capacity}; W - {delta_W}')
+        #if DoD_t < 0 or DoD_t > 1:
+            #raise Exception(f'Magnitude of delta W too large: SoC - {self.soc}; Cap. - {self.actual_capacity}; W - {delta_W}')
+        if DoD_t <= 0:
+            DoD_t = 0.0
+            delta_W = self.actual_capacity
+        if DoD_t >= 1:
+            DoD_t = 1.0
+            delta_W = (1 - self.soc) * self.actual_capacity
         C = self.initial_capacity
         I_ref = 0.5 * C
         I_t = delta_W / (delta_t / 3600)
@@ -125,6 +131,7 @@ class WanModel:
         theta_t = abs((DoD_t / DoD_ref) ** (1 / alpha) * (I_t / I_ref) ** (1 / beta) * math.exp(-psi * (1/T_a - 1/T_ref)))
         N_cref = 513 # Wan et al. 2024 (Good for single and multistage)
         Q_loss = theta_t / N_cref
+        assert Q_loss >= 0
 
         self.soc = DoD_t #* self.actual_capacity
         self.actual_capacity -= Q_loss
