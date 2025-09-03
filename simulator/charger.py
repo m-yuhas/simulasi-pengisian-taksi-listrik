@@ -87,8 +87,8 @@ class DCFastCharger:
                 to_remove.append(idx)
         for idx in sorted(to_remove, reverse=True):
             del self.vehicles_en_route[idx]
-        for v in self.vehicle_queue:
-            self.assign_vehicle(v['vehicle'], v['rate'], v['condition'])
+        for idx, v in enumerate(self.vehicle_queue):
+            self.assign_vehicle(self.vehicle_queue[idx], self.rates_queue[idx], self.stop_cond_queue[idx])
         for port in self.ports:
             if port.vehicle:
                 #print(port.vehicle.battery.to_dict())

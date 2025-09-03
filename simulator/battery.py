@@ -128,6 +128,9 @@ class WanModel:
         T_ref = 25
         T_a = ambient_t
 
+        if I_t <= 1e-5 and I_t >= -1e-5:
+            return
+
         theta_t = abs((DoD_t / DoD_ref) ** (1 / alpha) * (I_t / I_ref) ** (1 / beta) * math.exp(-psi * (1/T_a - 1/T_ref)))
         N_cref = 513 # Wan et al. 2024 (Good for single and multistage)
         Q_loss = theta_t / N_cref
