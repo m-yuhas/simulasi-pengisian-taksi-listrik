@@ -76,9 +76,9 @@ class TaxiFleetSimulator(gym.Env):
         self.arrived = self.demand.tick(self.dt)
         self.assigned = set({})
         self.inprogress = set({})
-        self.rejected = set({})
-        self.completed = set({})
-        self.failed = set({})
+        self.rejected = 0
+        self.completed = 0
+        self.failed = 0
 
         # Initialize Fleet
         self.fleet = []
@@ -118,6 +118,8 @@ class TaxiFleetSimulator(gym.Env):
         distance = float('inf')
         for job in self.arrived:
             d, t = vehicle.location.to(job.pickup_location)
+            #if d == float('inf'):
+            #    print(job.pickup_location.region.map[1])
             if d < distance:
                 distance = d
                 closest_job = job
@@ -135,12 +137,10 @@ class TaxiFleetSimulator(gym.Env):
 
         # First update vehicle statuses
         for idx in range(len(self.fleet)):
-            if action[idx,0] > 0.5 and self.fleet[idx].status not in [VehicleStatus.TOPICKUP, VehicleStatus.ONJOB, VehicleStatus.RECOVERY]:
+            if action[idx,0] > 0.5 and self.fleet[idx].status in [VehicleStatus.IDLE, VehicleStatus.CHARGING, VehicleStatus.TOCHARGE]:
                 self.fleet[idx].charge(self.get_closest_charger(self.fleet[idx]), action[idx,1] * 10)
-            elif len(self.arrived) > 0 and self.fleet[idx].status not in [VehicleStatus.TOCHARGE, VehicleStatus.CHARGING, VehicleStatus.RECOVERY]:
+            elif len(self.arrived) > 0 and self.fleet[idx].status in [VehicleStatus.IDLE, VehicleStatus.CHARGING, VehicleStatus.TOCHARGE]:
                 self.fleet[idx].service_demand(self.get_closest_demand(self.fleet[idx]))
-
-
 
         # Update fleet
         for vehicle in self.fleet:
@@ -156,50 +156,65 @@ class TaxiFleetSimulator(gym.Env):
         to_completed = set({})
         to_failed = set({})
         for job in self.inprogress:
-            if job.status == JobStatus.COMPLETED:
-                to_completed.union({job})
+            if job.status == JobStatus.COMPLETE:
+                to_completed = to_completed.union({job})
             elif job.status == JobStatus.FAILED:
-                to_failed.union({job})
+                to_failed = to_failed.union({job})
         self.inprogress = self.inprogress - to_completed - to_failed
-        self.completed.union(to_completed)
-        self.failed.union(to_failed)
+        self.completed += len(to_completed)
+        self.failed += len(to_failed)
 
         to_inprogress = set({})
+        to_failed = set({})
         for job in self.assigned:
-            pass
+            if job.status == JobStatus.INPROGRESS:
+                to_inprogress = to_inprogress.union({job})
+            elif job.status == JobStatus.FAILED:
+                to_failed = to_failed.union({job})
+        self.assigned = self.assigned - to_inprogress - to_failed
+        self.failed += len(to_failed)
+        self.inprogress = self.inprogress.union(to_inprogress)
 
         to_assigned = set({})
         to_rejected = set({})
         for job in self.arrived:
             job.tick(self.dt)
             if job.status == JobStatus.ASSIGNED:
-                to_assigned.union({job})
+                to_assigned = to_assigned.union({job})
             elif job.status == JobStatus.REJECTED:
-                to_rejected.union({job})
-        self.arrived = self.arrived - to_assigned - to_rejected
-        self.assigned.union(to_assigned)
-        self.rejected.union(to_rejected)
+                to_rejected = to_rejected.union({job})
+            elif job.status == JobStatus.INPROGRESS:
+                to_inprogress = to_inprogress.union({job})
+        self.arrived = self.arrived - to_assigned - to_rejected - to_inprogress
+        self.assigned = self.assigned.union(to_assigned)
+        self.inprogress = self.inprogress.union(to_inprogress)
+        self.rejected += len(to_rejected)
 
         # Update time
         self.t = self.t + datetime.timedelta(seconds=self.dt)
         self.step_count += 1
+        
+        print(self.t)
+        #print(f'Arrived: {len(self.arrived)}, Assigned: {len(self.assigned)}, Rejected: {self.rejected}, In Progress: {len(self.inprogress)}, Failed: {self.failed}, Complete: {self.completed}')
+        #print(f'{[(v.status, v.battery.soc) for v in self.fleet]}')
 
         # Calculate info
         info = {}
         info['arrived'] = [j.to_dict() for j in self.arrived]
         info['assigned'] = [j.to_dict() for j in self.assigned]
-        info['completed'] = len(self.completed)
-        info['rejected'] = len(self.rejected)
+        info['completed'] = self.completed
+        info['rejected'] = self.rejected
         info['inprogress'] = [j.to_dict() for j in self.inprogress]
-        info['failed'] = len(self.failed)
+        info['failed'] = self.failed
         info['charging_network'] = [s.to_dict() for s in self.charging_network]
         info['fleet'] = [v.to_dict() for v in self.fleet]
         
         # Calculate reward
         # TODO: specify as lambda
-        LAMBDA = 1.0
+        ALPHA = 1.0
+        BETA = 1.0
         #reward = sum([v.battery.soc for v in self.fleet]) + LAMBDA * sum([v.battery.actual_capacity / v.battery.initial_capacity for v in self.fleet])
-        reward = len(self.completed) + LAMBDA * sum([v.battery.actual_capacity / v.battery.initial_capacity for v in self.fleet])
+        reward = self.completed + ALPHA * sum([v.battery.actual_capacity / v.battery.initial_capacity for v in self.fleet]) # - BETA * sum([1 if v.status == VehicleStatus.RECOVERY else - for v in self.fleet])
 
         return (
             self._get_obs(),

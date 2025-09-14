@@ -82,15 +82,16 @@ class Vehicle:
         if self.charger:
             self.charger.disconnect(self.vid)
 
-    def initialize_recovery_state():
+    def initialize_recovery_state(self):
         self.destination = self.depo
         self.time_remaining = 24 * 60 * 60
-        self.soc = 1.0
+        self.battery.charge(self.battery.actual_capacity, 3600, T_a=25)
 
     def tick(self, dt: int, conditions: Dict[str, int]):
         if self.status == VehicleStatus.IDLE:
             self.battery.age(dt, conditions['T_a'])
         elif self.status == VehicleStatus.TOPICKUP:
+            self.time_remaining -= dt
             if self.time_remaining <= 0:
                 distance = self.location.to(self.destination)[0]
                 dW = distance * self.efficiency / 100
@@ -104,9 +105,8 @@ class Vehicle:
                     self.time_remaining = self.location.to(self.destination)[1]
                     self.job.inprogress()
                     self.status = VehicleStatus.ONJOB
-            else:
-                self.time_remaining -= dt
         elif self.status == VehicleStatus.TOCHARGE:
+            self.time_remaining -= dt
             if self.time_remaining <= 0:
                 distance = self.location.to(self.destination)[0]
                 dW = distance * self.efficiency / 100
@@ -116,12 +116,10 @@ class Vehicle:
                     self.initialize_recovery_state()
                 else:
                     self.status = VehicleStatus.CHARGING
-            else:
-                self.time_remaining -= dt
         elif self.status == VehicleStatus.CHARGING:
             self.charger.request_charge(self.preferred_rate, self.vid)
-            #self.battery.charge(dW, dt, conditions['T_a'])
         elif self.status == VehicleStatus.TOLOC:
+            self.time_remaining -= dt
             if self.time_remaining <= 0:
                 distance = self.location.to(self.destination)[0]
                 dW = distance * self.efficiency / 100
@@ -131,13 +129,12 @@ class Vehicle:
                     self.initialize_recovery_state()
                 else:
                     self.status = VehicleStatus.IDLE
-            else:
-                self.time_remaining -= dt
         elif self.status == VehicleStatus.ONJOB:
+            self.time_remaining -= dt
             if self.time_remaining <= 0:
                 distance = self.location.to(self.destination)[0]
                 dW = distance * self.efficiency / 100
-                self.battery.discharge(dW, dt, condition['T_a'])
+                self.battery.discharge(dW, dt, conditions['T_a'])
                 if self.battery.soc <= 0:
                     self.status = VehicleStatus.RECOVERY
                     self.job.fail()
@@ -145,12 +142,9 @@ class Vehicle:
                 else:
                     self.status = VehicleStatus.IDLE
                     self.job.complete()
-            else:
-                self.time_remaining -= dt
         elif self.status == VehicleStatus.RECOVERY:
+            self.time_remaining -= dt
             if self.time_remaining <= 0:
                 self.status = VehicleStatus.IDLE
-            else:
-                self.time_remaining -= dt
         else:
             raise Exception(f'Invalid vehicle state: {self.status}')

@@ -56,7 +56,7 @@ class Job:
         self.status = JobStatus.COMPLETE
 
     def fail(self):
-        self.status = JobStatus.FAIL
+        self.status = JobStatus.FAILED
 
     def tick(self, dt):
         self.elapsed_time += dt
