@@ -18,6 +18,7 @@ from job import *
 from vehicle import *
 from charger import *
 from demand import *
+from simulator import *
 
 import stable_baselines3
 import torch
@@ -38,8 +39,14 @@ class EightyTwentyPolicy(SchedulePolicy):
     def __init__(self):
         super().__init__()
 
-    def schedule(observation, info):
-        pass
+    def schedule(self, observation, info):
+        action = numpy.zeros((50,2))
+        for v in range(len(info['fleet'])):
+            if observation[v,1] < 0.2:
+                action[v,0] = 1.0
+                action[v,1] = 1.0
+        return action
+
 
 
 class DnnPolicy(SchedulePolicy):
@@ -49,30 +56,33 @@ class DnnPolicy(SchedulePolicy):
         self.dnn = torch.load(weights, weights_only=False).eval()
 
 
-    def schedule(observation, info):
+    def schedule(self, observation, info):
         with torch.no_grad():
             x = torch.from_numpy(observation).unsqueeze(0).cuda()
-            return self.policy(x)[0].cpu().detach().numpy()
+            return self.dnn(x)[0].squeeze().cpu().detach().numpy()
 
 
 class DataLogger:
     """Get data for plots."""
 
     def __init__(self, logfile):
-        self.csvfile = open(logfile, 'w')
-        header = ''
-        self.csvfile.write(header + '\n')
+        self.jsonfile = open(logfile, 'w')
+        self.jsonfile.write('[\n')
 
-    def write(info):
-        row = ''
-        self.csvfile.write(row + '\n')
+    def write(self, info):
+        entry = json.dumps(info,indent=4)
+        self.jsonfile.write(entry + ',\n')
+
+    def close(self):
+        self.jsonfile.write('{}]')
+        self.jsonfile.close()
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Simulate vehicle fleet')
     parser.add_argument('-c', '--config', help='Path to configuration file for a simulation')
     parser.add_argument('-o', '--output', help='Path to state output log')
-    parser.add_argument('-p', '--policy', help='EIGHTYTWENTY or DNN', type=int)
+    parser.add_argument('-p', '--policy', help='EIGHTYTWENTY or DNN')
     parser.add_argument('-w', '--weights', help='Path to policy weights for DNN')
     args = parser.parse_args()
 
@@ -97,5 +107,6 @@ if __name__ == '__main__':
     while not done:
         datalogger.write(info)
         action = policy.schedule(observation, info)
-        observation, done, _, info = environment.step(action)        
+        observation, reward, done, _, info = environment.step(action) 
 
+    datalogger.close()

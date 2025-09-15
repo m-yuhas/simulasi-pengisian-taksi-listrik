@@ -104,7 +104,17 @@ class TaxiFleetSimulator(gym.Env):
         self.action_space = gym.spaces.Box(0,1, shape=(len(self.fleet), 2))
         self.step_count = 0
 
-        return self._get_obs(), {}
+        info = {}
+        info['arrived'] = [j.to_dict() for j in self.arrived]
+        info['assigned'] = [j.to_dict() for j in self.assigned]
+        info['completed'] = self.completed
+        info['rejected'] = self.rejected
+        info['inprogress'] = [j.to_dict() for j in self.inprogress]
+        info['failed'] = self.failed
+        info['charging_network'] = [s.to_dict() for s in self.charging_network]
+        info['fleet'] = [v.to_dict() for v in self.fleet]
+
+        return self._get_obs(), info
 
     def get_closest_charger(self, vehicle: Vehicle):
         distances = []
@@ -138,7 +148,7 @@ class TaxiFleetSimulator(gym.Env):
         # First update vehicle statuses
         for idx in range(len(self.fleet)):
             if action[idx,0] > 0.5 and self.fleet[idx].status in [VehicleStatus.IDLE, VehicleStatus.CHARGING, VehicleStatus.TOCHARGE]:
-                self.fleet[idx].charge(self.get_closest_charger(self.fleet[idx]), action[idx,1] * 10)
+                self.fleet[idx].charge(self.get_closest_charger(self.fleet[idx]), action[idx,1] * self.fleet[idx].battery.actual_capacity)
             elif len(self.arrived) > 0 and self.fleet[idx].status in [VehicleStatus.IDLE, VehicleStatus.CHARGING, VehicleStatus.TOCHARGE]:
                 self.fleet[idx].service_demand(self.get_closest_demand(self.fleet[idx]))
 

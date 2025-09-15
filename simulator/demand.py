@@ -53,6 +53,7 @@ class ReplayDemand(Demand):
         self.t = self.t_min
         self.global_idx = 0
         self.region = region
+        self.loop = loop
 
     def seek(self, t: datetime.datetime) -> None:
         """Set demand to time t."""
@@ -88,7 +89,7 @@ class ReplayDemand(Demand):
         except StopIteration:
             if self.loop:
                 self.seek(self.t_min)
-                return self.next_interval(dt, conditions)
+                return self.tick(dt, conditions)
             else:
                 raise StopIteration
 
