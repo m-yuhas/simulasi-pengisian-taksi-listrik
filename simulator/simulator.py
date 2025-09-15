@@ -148,7 +148,7 @@ class TaxiFleetSimulator(gym.Env):
         # First update vehicle statuses
         for idx in range(len(self.fleet)):
             if action[idx,0] > 0.5 and self.fleet[idx].status in [VehicleStatus.IDLE, VehicleStatus.CHARGING, VehicleStatus.TOCHARGE]:
-                self.fleet[idx].charge(self.get_closest_charger(self.fleet[idx]), action[idx,1] * self.fleet[idx].battery.actual_capacity)
+                self.fleet[idx].charge(self.get_closest_charger(self.fleet[idx]), action[idx,1])
             elif len(self.arrived) > 0 and self.fleet[idx].status in [VehicleStatus.IDLE, VehicleStatus.CHARGING, VehicleStatus.TOCHARGE]:
                 self.fleet[idx].service_demand(self.get_closest_demand(self.fleet[idx]))
 
