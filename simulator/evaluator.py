@@ -67,16 +67,25 @@ class DataLogger:
     """Get data for plots."""
 
     def __init__(self, logfile):
-        self.jsonfile = open(logfile, 'w')
-        self.jsonfile.write('[\n')
+        self.csvfile = open(logfile, 'w')
+        self.csvfile.write('profit,total_power\n')
+        self.p_old = [72.1] * 50
 
     def write(self, info):
-        entry = json.dumps(info,indent=4)
-        self.jsonfile.write(entry + ',\n')
+        profit = 0
+        for j in info['inprogress']:
+            profit += j['fare']
+        total_power = 0
+        p_curr = []
+        for v in range(50):
+            p_curr.append(info['fleet'][v]['battery']['soc'] * 72.1)
+            total_power += max(0, p_curr[-1] - self.p_old[v])
+        self.p_old = p_curr
+        entry = f'{profit},{total_power}'
+        self.csvfile.write(entry + '\n')
 
     def close(self):
-        self.jsonfile.write('{}]')
-        self.jsonfile.close()
+        self.csvfile.close()
 
 
 if __name__ == '__main__':
