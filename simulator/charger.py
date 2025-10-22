@@ -14,7 +14,6 @@ class ChargePort:
         efficiency - charging efficiency (%)
     """
 
-
     def __init__(self, P_max: float, efficiency: float) -> None:
         self.P_max = P_max
         self.efficiency = efficiency
@@ -51,6 +50,7 @@ class ChargeStation:
         queue_size: maximum number of vehicles that can wait to charge (None
             means unbounded)
     """
+
     def __init__(self,
                  location: Location,
                  ports: List[ChargePort],
@@ -78,32 +78,11 @@ class ChargeStation:
             'vehicle_queue': [vid for vid in self.vehicle_queue],
         }
 
-    def assign_vehicle(self, vehicle: int, rate: float):
-        assigned = False
-        for port in self.ports:
-            if not port.vehicle:
-                port.vehicle = vehicle
-                port.vehicle.next_charge_rate = charging_rate
-                port.vehicle.end_capacity = end_capacity
-                port.vehicle.status = VehicleStatus.CHARGING
-                assigned = True
-                break
-            elif port.vehicle == vehicle:
-                port.vehicle.next_charge_rate = charging_rate
-                port.vehicle.end_capacity = end_capacity
-                assigned = True
-                break
-        if not assigned and vehicle not in self.vehicle_queue:
-            self.vehicle_queue.append(vehicle)
-            self.rates_queue.append(charging_rate)
-            self.stop_cond_queue.append(end_capacity)
-        if assigned and vehicle in self.vehicle_queue:
-            idx = self.vehicle_queue.index(vehicle)
-            del self.vehicle_queue[idx]
-            del self.rates_queue[idx]
-            del self.stop_cond_queue[idx]
-
     def request_charge(self, preferred_rate: float, vehicle: int) -> None:
+        """
+        A <vehicle> requests a maximum charge rate <preferred rate> in kW.
+        The requested rate may not be provided, but will never be exceeded.
+        """
         for port in self.ports:
             if port.vehicle == vehicle:
                 port.P_t = min(preferred_rate, port.P_max)
@@ -111,6 +90,9 @@ class ChargeStation:
         self.vehicle_queue[vehicle] = preferred_rate
 
     def disconnect(self, vehicle: int) -> None:
+        """
+        Disconnect <vehicle> from this charging station.
+        """
         for port in self.ports:
             if port.vehicle == vehicle:
                 port.vehicle = None
@@ -120,6 +102,15 @@ class ChargeStation:
             del self.vehicle_queue[vehicle]
 
     def tick(self, fleet: List, dt: float, T_a: float) -> None:
+        """
+        Update the state of all vehicles currently charging.
+
+        Args:
+            fleet: global list of vehicles.
+            dt: the tick length across which to recalculate state.
+            T_a: the ambient temperature of the charging station on the tick
+                interval.
+        """
         to_charge = list(self.vehicle_queue.keys())
         power_requested = 0.0
         for port in self.ports:
@@ -134,7 +125,6 @@ class ChargeStation:
                 else:
                     port.P_t = max(0.0, self.P_max - power_requested)
                     power_requested += port.P_t
-
         for port in self.ports:
             if port.vehicle is not None:
                 fleet[port.vehicle].battery.charge(port.P_t, dt, T_a)

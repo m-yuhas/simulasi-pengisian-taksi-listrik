@@ -177,9 +177,7 @@ class MultiStageBattery(Battery):
         Raises:
             BatteryOverChargeException            
         """
-        #print(f'Starting SoC: {self.soc}')
         self.recalculate_capacity(dW, dt, T_a)
-        #print(f'Ending SoC: {self.soc}, {dW}')
 
     def discharge(self, dW: float, dt: float, T_a: float) -> None:
         """Simulate discharge of <dW> kWh across <dt> seconds at <T_a> degrees

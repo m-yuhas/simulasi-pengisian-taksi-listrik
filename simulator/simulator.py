@@ -1,3 +1,4 @@
+"""Taxi fleet simulator."""
 from typing import Dict, Tuple
 from enum import Enum
 
@@ -9,13 +10,15 @@ import logging
 import pickle
 import random
 
-import coloredlogs
+
 import gymnasium as gym
 import numpy
 import yaml
 import zmq
 
+
 from scipy import stats
+
 
 from job import *
 from charger import *
@@ -48,12 +51,11 @@ class TaxiFleetSimulator(gym.Env):
             obs[idx, 1] = v.battery.soc
         return obs
 
-    def reset(self, seed: int = None) -> Tuple:
+    def reset(self, seed: int = None) -> Tuple[numpy.array, Dict]:
         """Start a new episode.
 
         Args:
             seed: Random seed for reproducible episodes
-            options: Additional configuration (unused)
 
         Returns:
             tuple: (obeservation, info) for initial state
@@ -103,6 +105,7 @@ class TaxiFleetSimulator(gym.Env):
         self.action_space = gym.spaces.Box(0,1, shape=(len(self.fleet), 2))
         self.step_count = 0
 
+        # Global state information
         info = {}
         info['arrived'] = [j.to_dict() for j in self.arrived]
         info['assigned'] = [j.to_dict() for j in self.assigned]
@@ -115,14 +118,20 @@ class TaxiFleetSimulator(gym.Env):
 
         return self._get_obs(), info
 
-    def get_closest_charger(self, vehicle: Vehicle):
+    def get_closest_charger(self, vehicle: Vehicle) -> ChargeStation:
+        """
+        Get the closest charger to a <vehicle>.
+        """
         distances = []
         for charger in self.charging_network:
             d, t = vehicle.location.to(charger.location)
             distances.append(d)
         return self.charging_network[distances.index(min(distances))]
 
-    def get_closest_demand(self, vehicle: Vehicle):
+    def get_closest_job(self, vehicle: Vehicle) -> Job:
+        """
+        Get the closest job to <vehicle> that is not inprogress or expired.
+        """
         closest_job = None
         distance = float('inf')
         for job in self.arrived:
@@ -149,7 +158,7 @@ class TaxiFleetSimulator(gym.Env):
             if action[idx,0] > 0.5 and self.fleet[idx].status in [VehicleStatus.IDLE, VehicleStatus.CHARGING, VehicleStatus.TOCHARGE]:
                 self.fleet[idx].charge(self.get_closest_charger(self.fleet[idx]), action[idx,1])
             elif len(self.arrived) > 0 and self.fleet[idx].status in [VehicleStatus.IDLE, VehicleStatus.CHARGING, VehicleStatus.TOCHARGE]:
-                self.fleet[idx].service_demand(self.get_closest_demand(self.fleet[idx]))
+                self.fleet[idx].service_demand(self.get_closest_job(self.fleet[idx]))
 
         # Update fleet
         for vehicle in self.fleet:
@@ -162,6 +171,7 @@ class TaxiFleetSimulator(gym.Env):
         # Get new arrivals
         self.arrived = self.arrived | self.demand.tick(self.dt)
 
+I       # Update jobs in progress
         to_completed = set({})
         to_failed = set({})
         for job in self.inprogress:
@@ -173,6 +183,7 @@ class TaxiFleetSimulator(gym.Env):
         self.completed += len(to_completed)
         self.failed += len(to_failed)
 
+        # Update assigned jobs
         to_inprogress = set({})
         to_failed = set({})
         for job in self.assigned:
@@ -184,6 +195,7 @@ class TaxiFleetSimulator(gym.Env):
         self.failed += len(to_failed)
         self.inprogress = self.inprogress.union(to_inprogress)
 
+        # Update arrived jobs
         to_assigned = set({})
         to_rejected = set({})
         for job in self.arrived:
@@ -204,8 +216,6 @@ class TaxiFleetSimulator(gym.Env):
         self.step_count += 1
         
         print(self.t)
-        #print(f'Arrived: {len(self.arrived)}, Assigned: {len(self.assigned)}, Rejected: {self.rejected}, In Progress: {len(self.inprogress)}, Failed: {self.failed}, Complete: {self.completed}')
-        #print(f'{[(v.status, v.battery.soc) for v in self.fleet]}')
 
         # Calculate info
         info = {}
@@ -234,24 +244,3 @@ class TaxiFleetSimulator(gym.Env):
         )
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Simulate vehicle fleet')
-    parser.add_argument('-c', '--config', help='Path to configuration file for a simulation')
-    parser.add_argument('-v', '--verbosity', help='Logging level')
-    parser.add_argument('-o', '--output', help='Path to state output log')
-    parser.add_argument('-p', '--port', help='Port for scheduler to listen to', type=int)
-    parser.add_argument('-n', '--max_steps', help='Maximum number of steps for the simulation', type=int)
-    parser.add_argument('-d', '--delta_t', help='Time delta per step', type=int)
-    args = parser.parse_args()
-    coloredlogs.install(level=args.verbosity.upper())
-
-    config = {}
-    with open(args.config, 'r') as fp:
-        config = yaml.safe_load(fp.read())
-    if args.max_steps is not None:
-        config['max steps'] = args.max_steps
-    if args.delta_t is not None:
-        config['delta t'] = args.delta_t
-
-    simulation = Simulation(config, port=args.port, logfile=args.output)
-    simulation.start()

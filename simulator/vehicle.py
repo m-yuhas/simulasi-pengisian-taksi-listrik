@@ -1,10 +1,16 @@
+"""Model of an electric vehicle."""
 from typing import Dict, ForwardRef, Union
 from enum import Enum
+
 
 from battery import *
 from region import *
 
+
 class VehicleStatus(Enum):
+    """
+    Vehicle states.
+    """
     IDLE = 1
     TOPICKUP = 2
     TOCHARGE = 3
@@ -13,6 +19,7 @@ class VehicleStatus(Enum):
     ONJOB = 6
     OFFDUTY = 7
     RECOVERY = 8
+
 
 class Vehicle:
     """Electric Vehicle.
@@ -49,7 +56,21 @@ class Vehicle:
         self.time_elapsed = 0.0
         self.status = VehicleStatus.IDLE
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Dict, float, str]:
+        """Return a dictionary representing the current state of the vehicle.
+
+        Returns:
+            {
+                location: vehicle's current location in the region,
+                destination: vehicle's current destination (same as location
+                    if vehicle is not travelling),
+                distance_remaining: distance to destination (km),
+                time_remaining: time to destination (seconds),
+                status: vehicle's current state,
+                battery: the current state of the vehicle's battery,
+                time_elapsed: time elapsed since the vehicle began travel
+            }
+        """
         return {
             'location': self.location.to_dict(),
             'destination': self.destination.to_dict(),
@@ -60,7 +81,10 @@ class Vehicle:
             'time_elapsed': self.time_elapsed
         }
 
-    def service_demand(self, job: ForwardRef('Job')):
+    def service_demand(self, job: ForwardRef('Job')) -> None:
+        """
+        Assign a vehicle to <job>.
+        """
         if self.charger:
             self.charger.disconnect(self.vid)
         self.destination = job.pickup_location
@@ -69,7 +93,12 @@ class Vehicle:
         self.job.assign_vehicle(self.vid)
         self.status = VehicleStatus.TOPICKUP
 
-    def charge(self, charger: ForwardRef('ChargeStation'), preferred_rate: float):
+    def charge(self, charger: ForwardRef('ChargeStation'), preferred_rate: float) -> None:
+        """
+        Assign a vehicle to a <charger> and attempt to charge at
+        <preferred_rate> (kW). The preferred rate is not guaranteed, but
+        cannot be exceeded during charging.
+        """
         self.charger = charger
         self.destination = charger.location
         self.time_remaining = self.location.to(self.destination)[1]
@@ -78,16 +107,23 @@ class Vehicle:
             self.status = VehicleStatus.TOCHARGE
             self.charger.disconnect(self.vid)
 
-    def idle(self):
-        if self.charger:
-            self.charger.disconnect(self.vid)
-
-    def initialize_recovery_state(self):
+    def initialize_recovery_state(self) -> None:
+        """
+        Set the vehicle to return to the depot fully charge after a 24 hour
+        timeout period.
+        """
         self.destination = self.depo
         self.time_remaining = 24 * 60 * 60
         self.battery.charge(self.battery.actual_capacity, 3600, T_a=25)
 
-    def tick(self, dt: int, conditions: Dict[str, int]):
+    def tick(self, dt: float, conditions: Dict[str, int]) -> None:
+        """
+        Update the vehicle's state.
+
+        Args:
+            dt: tick length (seconds).
+            conditions: environmental conditions present during the tick.
+        """
         if self.status == VehicleStatus.IDLE:
             self.battery.age(dt, conditions['T_a'])
         elif self.status == VehicleStatus.TOPICKUP:
