@@ -63,6 +63,7 @@ class DnnPolicy(SchedulePolicy):
             action[:,1] = action[:,1] * 10.0
             return action
 
+
 class DataLogger:
     """Get data for plots."""
 
