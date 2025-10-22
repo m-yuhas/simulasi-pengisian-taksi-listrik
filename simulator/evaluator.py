@@ -60,7 +60,7 @@ class DnnPolicy(SchedulePolicy):
         with torch.no_grad():
             x = torch.from_numpy(observation).unsqueeze(0).cuda()
             action = self.dnn(x)[0].squeeze().cpu().detach().numpy()
-            action[:,1] = action[:,1] * 20.0
+            action[:,1] = action[:,1] * 10.0
             return action
 
 class DataLogger:
@@ -68,20 +68,37 @@ class DataLogger:
 
     def __init__(self, logfile):
         self.csvfile = open(logfile, 'w')
-        self.csvfile.write('profit,total_power\n')
+        self.csvfile.write('profit,total_power,completed,')
+        self.csvfile.write(",".join([f"soh{i}" for i in range(50)]))
+        self.csvfile.write(",")
+        self.csvfile.write(",".join([f"status{i}" for i in range(50)]))
+        self.csvfile.write("\n")
         self.p_old = [72.1] * 50
+        self.retired = [0] * 50
 
     def write(self, info):
-        profit = 0
-        for j in info['inprogress']:
-            profit += j['fare']
         total_power = 0
         p_curr = []
+        soh_curr = []
+        state = []
         for v in range(50):
             p_curr.append(info['fleet'][v]['battery']['soc'] * 72.1)
             total_power += max(0, p_curr[-1] - self.p_old[v])
+            if info['fleet'][v]['battery']['actual_capacity'] / 72.1 <= 0.8:
+                self.retired[v] = 1
+            soh_curr.append(info['fleet'][v]['battery']['actual_capacity'] / info['fleet'][v]['battery']['initial_capacity'])
+            state.append(1 if info['fleet'][v]['status'] == "RECOVERY" else 0)
         self.p_old = p_curr
-        entry = f'{profit},{total_power}'
+
+        profit = 0
+        for j in info['inprogress']:
+            if self.retired[j['vehicle']] < 1:
+                profit += j['fare']
+
+        entry = f'{profit},{total_power},'
+        for i in range(50):
+            entry += f"{soh_curr[i]},"
+        entry += ",".join([f"{state[i]}" for i in range(50)])
         self.csvfile.write(entry + '\n')
 
     def close(self):

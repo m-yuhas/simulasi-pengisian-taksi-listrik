@@ -61,7 +61,6 @@ class TaxiFleetSimulator(gym.Env):
         super().reset(seed=seed)
 
         # Initialize Time
-        #self.dt = datetime.timedelta(seconds=self.config['delta t'])
         self.dt = float(self.config['delta t'])
         self.t = datetime.datetime.strptime(self.config['start t'], '%Y/%m/%d %H:%M:%S')
         self.t_max = datetime.datetime.strptime(self.config['end t'], '%Y/%m/%d %H:%M:%S')

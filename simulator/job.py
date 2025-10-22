@@ -30,6 +30,7 @@ class Job:
         self.dropoff_location = CyclicZoneGraphLocation(int(data['dropoff_location']), region)
         self.duration = datetime.datetime.strptime(data['dropoff_time'], DATEFMT) - datetime.datetime.strptime(data['pickup_time'], DATEFMT)
         self.distance = float(data['distance'])
+        self.fare = float(data['fare'])
         self.vehicle = None
         self.status = JobStatus.ARRIVED
         self.elapsed_time = 0
@@ -40,6 +41,7 @@ class Job:
             'dropoff_location': self.dropoff_location.to_dict(),
             'duration': self.duration.total_seconds(),
             'distance': self.distance,
+            'fare': self.fare,
             'vehicle': self.vehicle,
             'status': self.status.name,
             'id': self.id
