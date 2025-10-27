@@ -1,5 +1,4 @@
 # Electric Taxi Fleet Simulator
-[Bahasa](#simulasi-pengisian-taksi-listrik) ❀ [简体中文](#)
 
 Electric vehicles pose several unique challenges with respect to fleet operations:
 1. Batteries degrade over time, leading to reduced capacity to service demand and premature vehicle retirement
