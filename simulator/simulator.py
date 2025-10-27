@@ -14,7 +14,6 @@ import random
 import gymnasium as gym
 import numpy
 import yaml
-import zmq
 
 
 from scipy import stats
