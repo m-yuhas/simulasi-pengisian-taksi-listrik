@@ -24,7 +24,7 @@ pip install git+https://github.com/sccicitb/simulasi-pengisian-taksi-listrik.git
 ```
 ### Data Preparation
 This simulator uses real-world taxi data to simulate demand in a region.
-Right now two datasets are supported: [New York City](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page) and [Chicago](https://data.cityofchicago.org/Transportation/Taxi-Trips-2013-2023-/wrvz-psew).
+Right now two datasets are supported: [New York City](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page) and [Chicago](https://data.cityofchicago.org/Transportation/Taxi-Trips-2013-2023-/wrvz-psew/about_data).
 You will need to download the csv files for the years you want to simulate from those websites separately.
 
 To convert the data into a format accepted by the simulator run the following for the Chicago dataset:
