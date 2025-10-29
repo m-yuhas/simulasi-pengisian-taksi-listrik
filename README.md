@@ -18,6 +18,22 @@ If you use this simulator in your research, please cite as:
 
 ## Quick Start
 
+### Installation
+```
+pip install git+https://github.com/sccicitb/simulasi-pengisian-taksi-listrik.git
+```
+### Data Preparation
+This simulator uses real-world taxi data to simulate demand in a region.
+Right now two datasets are supported: New York City and Chicago.
+You will need to download the csv files for the years you want to simulate from those websites separately.
+
+To convert the data into a format accepted by the simulator run the following for the Chicago dataset:
+```
+python -m scripts.chicago_cab_data_prep --raw-data <Paths to downloaded CSVs>
+```
+And the following for the New York dataset:
+
+
 ## Architecture
 ![Block Diagram](images/simulator-bd.png)
 The simulator consists of 6 main models:
@@ -35,6 +51,7 @@ The simulator is tick-based, meaning the state evolves over time based on the sc
 Pull requests are welcome.
 Please run the unit tests before making a pull request.
 We are happy to consider all contributions, however, we are especially interested in completing the following:
+* Proper Python packaging
 * Adding "Readthedocs" style documentation
 * Charging station / vehicle downtime modelling
 * Driver / passenger behavior modelling
