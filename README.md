@@ -47,6 +47,7 @@ The script output will be a pickle file containing travel times and distances be
 
 ### Create Simulation Configuration
 Configurations are stored as YAML files.
+Sample configurations are provided in the ```configs/``` directory for each city.
 
 ### Train a Policy
 ```
