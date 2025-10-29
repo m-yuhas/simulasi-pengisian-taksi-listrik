@@ -1,4 +1,5 @@
 """Battery models."""
+
 from typing import Dict
 
 
@@ -57,9 +58,9 @@ class Battery:
             }
         """
         return {
-            'initial_capacity': self.initial_capacity,
-            'actual_capacity': self.actual_capacity,
-            'soc': self.soc
+            "initial_capacity": self.initial_capacity,
+            "actual_capacity": self.actual_capacity,
+            "soc": self.soc,
         }
 
     def charge(self, dW: float, dt: float, T_a: float) -> None:
@@ -72,7 +73,7 @@ class Battery:
             T_a: battery temperature (Celsius)
 
         Raises:
-            BatteryOverChargeException            
+            BatteryOverChargeException
         """
         raise NotImplemented
 
@@ -98,7 +99,7 @@ class MultiStageBattery(Battery):
     """This battery is affected by two types of aging:
         Cyclic: Wan et al.
         Calendar: ?
-    
+
     Assumptions:
         1. Charge / discharge efficiency is 100%
         2. No loss of SoC in storage
@@ -138,8 +139,8 @@ class MultiStageBattery(Battery):
 
         DoD_ref = 1.0
         DoD_t = (self.soc * self.actual_capacity + dW) / self.actual_capacity
-        #if DoD_t < 0 or DoD_t > 1:
-            #raise Exception(f'Magnitude of delta W too large: SoC - {self.soc}; Cap. - {self.actual_capacity}; W - {delta_W}')
+        # if DoD_t < 0 or DoD_t > 1:
+        # raise Exception(f'Magnitude of delta W too large: SoC - {self.soc}; Cap. - {self.actual_capacity}; W - {delta_W}')
         if DoD_t <= 0:
             DoD_t = 0.0
             dW = self.actual_capacity
@@ -155,8 +156,12 @@ class MultiStageBattery(Battery):
             # In the case where the current drawn is so small, don't don anything
             return
 
-        theta_t = abs((DoD_t / DoD_ref) ** (1 / alpha) * (I_t / I_ref) ** (1 / beta) * math.exp(-psi * (1/T_a - 1/T_ref)))
-        N_cref = 513 # Wan et al. 2024 (Good for single and multistage)
+        theta_t = abs(
+            (DoD_t / DoD_ref) ** (1 / alpha)
+            * (I_t / I_ref) ** (1 / beta)
+            * math.exp(-psi * (1 / T_a - 1 / T_ref))
+        )
+        N_cref = 513  # Wan et al. 2024 (Good for single and multistage)
         Q_loss = theta_t / N_cref
         assert Q_loss >= 0
 
@@ -175,7 +180,7 @@ class MultiStageBattery(Battery):
             T_a: battery temperature (Celsius)
 
         Raises:
-            BatteryOverChargeException            
+            BatteryOverChargeException
         """
         self.recalculate_capacity(dW, dt, T_a)
 
@@ -195,6 +200,3 @@ class MultiStageBattery(Battery):
     def age(self, dt: float, T_a: float) -> None:
         """Simulate battery aging for <dt> seconds. at <T_a> degrees Celsius."""
         return
-
-
-

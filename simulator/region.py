@@ -1,4 +1,5 @@
 """Region map."""
+
 from typing import Dict, ForwardRef, Self, Tuple
 
 
@@ -8,7 +9,7 @@ import pickle
 class Location:
     """Abstract class representing a location in a region."""
 
-    def __init__(self, region: ForwardRef('Region')) -> None:
+    def __init__(self, region: ForwardRef("Region")) -> None:
         self.region = region
 
     def to_dict(self) -> Dict:
@@ -34,7 +35,9 @@ class Region:
     def __init__(self) -> None:
         pass
 
-    def distance(self, start: Location, end: Location, conditions: Dict = None) -> Tuple[float, float]:
+    def distance(
+        self, start: Location, end: Location, conditions: Dict = None
+    ) -> Tuple[float, float]:
         """Calculate the distance between <start> and <end> given <conditions>.
 
         Args:
@@ -81,10 +84,12 @@ class CyclicZoneGraph(Region):
 
     def __init__(self, mapfile: str) -> None:
         super().__init__()
-        with open(mapfile, 'rb') as pklfile:
+        with open(mapfile, "rb") as pklfile:
             self.map = pickle.loads(pklfile.read())
 
-    def distance(self, start: Location, end: Location, conditions: Dict = None) -> float:
+    def distance(
+        self, start: Location, end: Location, conditions: Dict = None
+    ) -> float:
         """Calculate the distance between <start> and <end> given <conditions>.
 
         Args:
@@ -95,6 +100,7 @@ class CyclicZoneGraph(Region):
         Returns:
             (distance, time) in km and seconds respectively.
         """
-        return (self.map[start.zone][end.zone]['distance'], self.map[start.zone][end.zone]['time'])
-
-
+        return (
+            self.map[start.zone][end.zone]["distance"],
+            self.map[start.zone][end.zone]["time"],
+        )

@@ -1,4 +1,5 @@
 """Demand models."""
+
 from typing import Dict, Set
 
 
@@ -6,7 +7,7 @@ import csv
 import datetime
 
 
-from job import *
+from simulator.job import *
 
 
 class Demand:
@@ -44,12 +45,12 @@ class ReplayDemand(Demand):
 
     def __init__(self, path: str, region, loop: bool = True) -> None:
         super().__init__()
-        self.datefmt = '%Y-%m-%d %H:%M:%S'
+        self.datefmt = "%Y-%m-%d %H:%M:%S"
         self.path = path
-        self.csvfile = open(path, 'r')
+        self.csvfile = open(path, "r")
         self.reader = csv.DictReader(self.csvfile)
         self.last = next(self.reader)
-        self.t_min = datetime.datetime.strptime(self.last['pickup_time'], self.datefmt)
+        self.t_min = datetime.datetime.strptime(self.last["pickup_time"], self.datefmt)
         self.t = self.t_min
         self.global_idx = 0
         self.region = region
@@ -65,7 +66,7 @@ class ReplayDemand(Demand):
             return
         while self.t < t:
             self.last = next(self.reader)
-            self.t = datetime.datetime.strptime(self.last['pickup_time'], self.datefmt)
+            self.t = datetime.datetime.strptime(self.last["pickup_time"], self.datefmt)
 
     def tick(self, dt: datetime.timedelta, conditions: Dict = None) -> Set:
         """Get new jobs released on interval [t, t + dt).
@@ -84,7 +85,9 @@ class ReplayDemand(Demand):
                 self.last = next(self.reader)
                 jobs.add(Job(self.last, job_id=self.global_idx, region=self.region))
                 self.global_idx += 1
-                self.t = datetime.datetime.strptime(self.last['pickup_time'], self.datefmt)
+                self.t = datetime.datetime.strptime(
+                    self.last["pickup_time"], self.datefmt
+                )
             return jobs
         except StopIteration:
             if self.loop:
@@ -92,4 +95,3 @@ class ReplayDemand(Demand):
                 return self.tick(dt, conditions)
             else:
                 raise StopIteration
-

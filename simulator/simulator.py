@@ -19,11 +19,11 @@ import yaml
 from scipy import stats
 
 
-from job import *
-from charger import *
-from demand import *
-from region import *
-from vehicle import *
+from simulator.job import *
+from simulator.charger import *
+from simulator.demand import *
+from simulator.region import *
+from simulator.vehicle import *
 
 
 random.seed(0)
@@ -74,8 +74,8 @@ class TaxiFleetSimulator(gym.Env):
         self.demand = ReplayDemand(self.config['demand'], self.region)
         self.demand.seek(self.t)
         self.arrived = self.demand.tick(self.dt)
-        self.assigned = set({})
-        self.inprogress = set({})
+        self.assigned = set()
+        self.inprogress = set()
         self.rejected = 0
         self.completed = 0
         self.failed = 0
@@ -170,9 +170,9 @@ class TaxiFleetSimulator(gym.Env):
         # Get new arrivals
         self.arrived = self.arrived | self.demand.tick(self.dt)
 
-I       # Update jobs in progress
-        to_completed = set({})
-        to_failed = set({})
+        # Update jobs in progress
+        to_completed = set()
+        to_failed = set()
         for job in self.inprogress:
             if job.status == JobStatus.COMPLETE:
                 to_completed = to_completed.union({job})
@@ -183,8 +183,8 @@ I       # Update jobs in progress
         self.failed += len(to_failed)
 
         # Update assigned jobs
-        to_inprogress = set({})
-        to_failed = set({})
+        to_inprogress = set()
+        to_failed = set()
         for job in self.assigned:
             if job.status == JobStatus.INPROGRESS:
                 to_inprogress = to_inprogress.union({job})
@@ -195,8 +195,8 @@ I       # Update jobs in progress
         self.inprogress = self.inprogress.union(to_inprogress)
 
         # Update arrived jobs
-        to_assigned = set({})
-        to_rejected = set({})
+        to_assigned = set()
+        to_rejected = set()
         for job in self.arrived:
             job.tick(self.dt)
             if job.status == JobStatus.ASSIGNED:

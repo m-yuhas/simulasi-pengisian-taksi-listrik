@@ -1,9 +1,10 @@
 """Models for charging infrastructure."""
+
 from typing import Dict, List, Union
 
 
-from region import *
-from vehicle import *
+from simulator.region import *
+from simulator.vehicle import *
 
 
 class ChargePort:
@@ -32,10 +33,10 @@ class ChargePort:
             }
         """
         return {
-            'P_max': self.P_max,
-            'P_t': self.P_t,
-            'efficiency': self.efficiency,
-            'vehicle': self.vehicle,
+            "P_max": self.P_max,
+            "P_t": self.P_t,
+            "efficiency": self.efficiency,
+            "vehicle": self.vehicle,
         }
 
 
@@ -51,10 +52,9 @@ class ChargeStation:
             means unbounded)
     """
 
-    def __init__(self,
-                 location: Location,
-                 ports: List[ChargePort],
-                 P_max: float = None) -> None:
+    def __init__(
+        self, location: Location, ports: List[ChargePort], P_max: float = None
+    ) -> None:
         self.location = location
         self.ports = ports
         self.P_max = P_max
@@ -62,7 +62,7 @@ class ChargeStation:
 
     def to_dict(self) -> Dict[str, Union[Dict, List, int, float]]:
         """Return representing the current charging station state.
-        
+
         Returns:
             {
                 location: charging station location,
@@ -72,10 +72,10 @@ class ChargeStation:
             }
         """
         return {
-            'location': self.location.to_dict(),
-            'ports': [p.to_dict() for p in self.ports],
-            'P_max': self.P_max,
-            'vehicle_queue': [vid for vid in self.vehicle_queue],
+            "location": self.location.to_dict(),
+            "ports": [p.to_dict() for p in self.ports],
+            "P_max": self.P_max,
+            "vehicle_queue": [vid for vid in self.vehicle_queue],
         }
 
     def request_charge(self, preferred_rate: float, vehicle: int) -> None:
@@ -128,5 +128,3 @@ class ChargeStation:
         for port in self.ports:
             if port.vehicle is not None:
                 fleet[port.vehicle].battery.charge(port.P_t, dt, T_a)
-
-

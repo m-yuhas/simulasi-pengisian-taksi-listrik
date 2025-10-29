@@ -1,16 +1,18 @@
 """Model of an electric vehicle."""
+
 from typing import Dict, ForwardRef, Union
 from enum import Enum
 
 
-from battery import *
-from region import *
+from simulator.battery import *
+from simulator.region import *
 
 
 class VehicleStatus(Enum):
     """
     Vehicle states.
     """
+
     IDLE = 1
     TOPICKUP = 2
     TOCHARGE = 3
@@ -32,18 +34,24 @@ class Vehicle:
         location: starting location of the vehicle.
     """
 
-    def __init__(self, model: Union[str, Dict[str, float]], battery: Union[str, Battery], location: Location, vid: int) -> None:
+    def __init__(
+        self,
+        model: Union[str, Dict[str, float]],
+        battery: Union[str, Battery],
+        location: Location,
+        vid: int,
+    ) -> None:
         self.model = model
         self.vid = vid
         self.charger = None
-        if self.model.lower() == 'byd e6':
+        if self.model.lower() == "byd e6":
             capacity = 71.7
             self.efficiency = 17.1
         else:
-            capacity = model['capacity']
-            self.efficiency = model['efficiency']
+            capacity = model["capacity"]
+            self.efficiency = model["efficiency"]
 
-        if battery.lower() == 'multistage':
+        if battery.lower() == "multistage":
             self.battery = MultiStageBattery(capacity)
         else:
             self.battery = battery
@@ -56,7 +64,7 @@ class Vehicle:
         self.time_elapsed = 0.0
         self.status = VehicleStatus.IDLE
 
-    def to_dict(self) -> Dict[str, Dict, float, str]:
+    def to_dict(self) -> Dict[str, Union[Dict, float, str]]:
         """Return a dictionary representing the current state of the vehicle.
 
         Returns:
@@ -72,16 +80,16 @@ class Vehicle:
             }
         """
         return {
-            'location': self.location.to_dict(),
-            'destination': self.destination.to_dict(),
-            'distance_remaining': self.distance_remaining,
-            'time_remaining': self.time_remaining,
-            'status': self.status.name,
-            'battery': self.battery.to_dict(),
-            'time_elapsed': self.time_elapsed
+            "location": self.location.to_dict(),
+            "destination": self.destination.to_dict(),
+            "distance_remaining": self.distance_remaining,
+            "time_remaining": self.time_remaining,
+            "status": self.status.name,
+            "battery": self.battery.to_dict(),
+            "time_elapsed": self.time_elapsed,
         }
 
-    def service_demand(self, job: ForwardRef('Job')) -> None:
+    def service_demand(self, job: ForwardRef("Job")) -> None:
         """
         Assign a vehicle to <job>.
         """
@@ -93,7 +101,9 @@ class Vehicle:
         self.job.assign_vehicle(self.vid)
         self.status = VehicleStatus.TOPICKUP
 
-    def charge(self, charger: ForwardRef('ChargeStation'), preferred_rate: float) -> None:
+    def charge(
+        self, charger: ForwardRef("ChargeStation"), preferred_rate: float
+    ) -> None:
         """
         Assign a vehicle to a <charger> and attempt to charge at
         <preferred_rate> (kW). The preferred rate is not guaranteed, but
@@ -125,13 +135,13 @@ class Vehicle:
             conditions: environmental conditions present during the tick.
         """
         if self.status == VehicleStatus.IDLE:
-            self.battery.age(dt, conditions['T_a'])
+            self.battery.age(dt, conditions["T_a"])
         elif self.status == VehicleStatus.TOPICKUP:
             self.time_remaining -= dt
             if self.time_remaining <= 0:
                 distance = self.location.to(self.destination)[0]
                 dW = distance * self.efficiency / 100
-                self.battery.discharge(dW, dt, conditions['T_a'])
+                self.battery.discharge(dW, dt, conditions["T_a"])
                 if self.battery.soc <= 0:
                     self.status = VehicleStatus.RECOVERY
                     self.job.fail()
@@ -146,7 +156,7 @@ class Vehicle:
             if self.time_remaining <= 0:
                 distance = self.location.to(self.destination)[0]
                 dW = distance * self.efficiency / 100
-                self.battery.discharge(dW, dt, conditions['T_a'])
+                self.battery.discharge(dW, dt, conditions["T_a"])
                 if self.battery.soc <= 0:
                     self.status = VehicleStatus.RECOVERY
                     self.initialize_recovery_state()
@@ -159,7 +169,7 @@ class Vehicle:
             if self.time_remaining <= 0:
                 distance = self.location.to(self.destination)[0]
                 dW = distance * self.efficiency / 100
-                self.battery.discharge(dW, dt, conditions['T_a'])
+                self.battery.discharge(dW, dt, conditions["T_a"])
                 if self.battery.soc <= 0:
                     self.status = VehicleStatus.RECOVERY
                     self.initialize_recovery_state()
@@ -170,7 +180,7 @@ class Vehicle:
             if self.time_remaining <= 0:
                 distance = self.location.to(self.destination)[0]
                 dW = distance * self.efficiency / 100
-                self.battery.discharge(dW, dt, conditions['T_a'])
+                self.battery.discharge(dW, dt, conditions["T_a"])
                 if self.battery.soc <= 0:
                     self.status = VehicleStatus.RECOVERY
                     self.job.fail()
@@ -183,4 +193,4 @@ class Vehicle:
             if self.time_remaining <= 0:
                 self.status = VehicleStatus.IDLE
         else:
-            raise Exception(f'Invalid vehicle state: {self.status}')
+            raise Exception(f"Invalid vehicle state: {self.status}")

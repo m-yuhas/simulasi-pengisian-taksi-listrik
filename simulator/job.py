@@ -1,4 +1,5 @@
 """Jobs."""
+
 from typing import Dict, Union
 from enum import Enum
 
@@ -6,23 +7,24 @@ from enum import Enum
 import datetime
 
 
-from region import *
-from vehicle import *
+from simulator.region import *
+from simulator.vehicle import *
 
 
-DATEFMT = '%Y-%m-%d %H:%M:%S'
+DATEFMT = "%Y-%m-%d %H:%M:%S"
 
 
 class JobStatus(Enum):
     """
     Possible job states.
     """
-    ARRIVED = 1     # Job created
-    ASSIGNED = 2    # Job assigned to vehicle
+
+    ARRIVED = 1  # Job created
+    ASSIGNED = 2  # Job assigned to vehicle
     INPROGRESS = 3  # Job is being serviced
-    REJECTED = 4    # Job not to be serviced
-    COMPLETE = 5    # Job successfully completed
-    FAILED = 6      # Job failed
+    REJECTED = 4  # Job not to be serviced
+    COMPLETE = 5  # Job successfully completed
+    FAILED = 6  # Job failed
 
 
 class Job:
@@ -37,14 +39,20 @@ class Job:
         region: global region map used to convert locations into location
             objects.
     """
-    
+
     def __init__(self, data: Dict, job_id: int, region: Region) -> None:
         self.id = job_id
-        self.pickup_location = CyclicZoneGraphLocation(int(data['pickup_location']), region)
-        self.dropoff_location = CyclicZoneGraphLocation(int(data['dropoff_location']), region)
-        self.duration = datetime.datetime.strptime(data['dropoff_time'], DATEFMT) - datetime.datetime.strptime(data['pickup_time'], DATEFMT)
-        self.distance = float(data['distance'])
-        self.fare = float(data['fare'])
+        self.pickup_location = CyclicZoneGraphLocation(
+            int(data["pickup_location"]), region
+        )
+        self.dropoff_location = CyclicZoneGraphLocation(
+            int(data["dropoff_location"]), region
+        )
+        self.duration = datetime.datetime.strptime(
+            data["dropoff_time"], DATEFMT
+        ) - datetime.datetime.strptime(data["pickup_time"], DATEFMT)
+        self.distance = float(data["distance"])
+        self.fare = float(data["fare"])
         self.vehicle = None
         self.status = JobStatus.ARRIVED
         self.elapsed_time = 0
@@ -59,14 +67,14 @@ class Job:
             vehicle (int), status (str), id (int) }
         """
         return {
-            'pickup_location': self.pickup_location.to_dict(),
-            'dropoff_location': self.dropoff_location.to_dict(),
-            'duration': self.duration.total_seconds(),
-            'distance': self.distance,
-            'fare': self.fare,
-            'vehicle': self.vehicle,
-            'status': self.status.name,
-            'id': self.id
+            "pickup_location": self.pickup_location.to_dict(),
+            "dropoff_location": self.dropoff_location.to_dict(),
+            "duration": self.duration.total_seconds(),
+            "distance": self.distance,
+            "fare": self.fare,
+            "vehicle": self.vehicle,
+            "status": self.status.name,
+            "id": self.id,
         }
 
     def assign_vehicle(self, vehicle: int) -> None:
