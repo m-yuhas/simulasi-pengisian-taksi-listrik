@@ -24,7 +24,7 @@ pip install git+https://github.com/sccicitb/simulasi-pengisian-taksi-listrik.git
 ```
 ### Data Preparation
 This simulator uses real-world taxi data to simulate demand in a region.
-Right now two datasets are supported: New York City and Chicago.
+Right now two datasets are supported: [New York City](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page) and [Chicago](https://data.cityofchicago.org/Transportation/Taxi-Trips-2013-2023-/wrvz-psew).
 You will need to download the csv files for the years you want to simulate from those websites separately.
 
 To convert the data into a format accepted by the simulator run the following for the Chicago dataset:
@@ -32,7 +32,34 @@ To convert the data into a format accepted by the simulator run the following fo
 python -m scripts.chicago_cab_data_prep --raw-data <Paths to downloaded CSVs>
 ```
 And the following for the New York dataset:
+```
+python -m scripts.yellow_cab_data_prep --raw-data <Paths to downloaded CSVs>
+```
+In both cases the output will be a consolidated csv file.
 
+### Map Preparation
+To generate a city map from the dataset run the following command:
+```
+python -m scripts.generate_city_map --dataset <Path to consolidated CSV> --n-zones <# of zones in the city> --map-name <Output pickle file>
+```
+The number of zones in your dataset can be found on its website (77 for Chicago, 263 for New York).
+The script output will be a pickle file containing travel times and distances between each zone in the city.
+
+### Create Simulation Configuration
+Configurations are stored as YAML files.
+
+### Train a Policy
+```
+python -m scheduler -a TRAIN -c <path to config.yaml> -w <path to outputs weights> --epochs <number of episodes to train on>
+```
+### Test a Policy
+```
+python -m scheduler -a EVAL -c <path to config.yaml> -w <path to weights (if DNN)> -p <policy type (EIGHTYTWENTY or DNN)> -o <path to csv log output>
+```
+### Evaluate a Policy
+```
+python -m analysis -h
+```
 
 ## Architecture
 ![Block Diagram](images/simulator-bd.png)
